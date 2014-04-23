@@ -338,7 +338,7 @@
           "ruby /home/ubuntu/s3get.rb chef-client-setup.rb validation.pem databag-key\n",
           "ruby /etc/chef/chef-client-setup.rb ", {"Ref" : "DomainName"}, " ", { "Ref" : "ChefEnvironment"}, 
           "     ", {"Ref" : "ChefOrganization"}, "\n",
-          "chef-client -j /etc/chef/first-boot.json",
+          "chef-client -j /etc/chef/first-boot.json \n",
           "touch /tmp/done_with_user_data\n"
         ]]}}        
       }
