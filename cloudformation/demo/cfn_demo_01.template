@@ -1,7 +1,7 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
 
-  "Description" : "AWS CloudFormation Sample Template vpc_single_instance_in_subnet.template: Sample template showing how to create a VPC and add an EC2 instance with an Elastic IP address and a security group. **WARNING** This template creates an Amazon EC2 instance. You will be billed for the AWS resources used if you create a stack from this template.",
+  "Description" : "CloudFormation template based on AWS example vpc_single_instance_in_subnet.template: Creates VPC with single subnet, an Ubuntu EC2 instance with an Elastic IP address, and a security group.",
 
   "Parameters" : {
 
@@ -223,19 +223,51 @@
       }
     },
 
+    "InstanceProfile" : {
+      "Type" : "AWS::IAM::InstanceProfile",
+      "Properties" : {
+        "Path" : "/",
+        "Roles" : ["bootstrap-bucket-read"]
+      }
+    },
 
     "WebServerInstance" : {
       "Type" : "AWS::EC2::Instance",
       "DependsOn" : "AttachGateway",
       "Metadata" : {
         "Comment" : "A simple ubuntu server",
-
         "AWS::CloudFormation::Init": {
           "config": {
+            "packages": {
+              "apt": {
+                "build-essential": [],
+                "ruby1.9.3": []
+              },
+              "rubygems": {
+                "chef": [],
+                "ohai": [],
+                "aws-sdk": []
+              }
+            },
             "files": {
-              "/home/ubuntu/foo": {
+              "/home/ubuntu/s3get.rb": {
                 "content": {
-                  "Fn::Join": ["", ["this is some text\n", "and this is some more text\n" ]]
+                  "Fn::Join": ["", [
+                    "require 'rubygems' \n",
+                    "require 'aws-sdk' \n",
+
+                    "s3 = AWS::S3.new() \n",
+
+                    "bucket_name = 'level11-devops-demo' \n",
+
+                    "ARGV.each do |obj_name| \n",
+                    "  srcfile = s3.buckets[bucket_name].objects[obj_name] \n",
+                    "  destfile = '/etc/chef/' + obj_name \n",
+                    "  File.open(destfile, \"w\") do |f| \n",
+                    "    f.write(srcfile.read) \n",
+                    "  end \n",
+                    "end \n"
+                  ]]
                 },
                 "mode": "000644",
                 "owner": "ubuntu",
@@ -246,6 +278,7 @@
         }
       },
       "Properties" : {
+        "IamInstanceProfile" : {"Ref" : "InstanceProfile"},
         "ImageId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "AMI" ]},
         "SecurityGroupIds" : [{ "Ref" : "InstanceSecurityGroup" }],
         "SubnetId" : { "Ref" : "Subnet" },
@@ -257,14 +290,17 @@
         ],
         "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["", [
           "#!/bin/bash -ex\n",
-          "echo thisissomeuserdatabeforethewait > /tmp/userdatabefore\n",
-
-          "# Put some junk into a file\n",
+          "touch /tmp/starting_user_data\n",
+          "apt-get update -y\n",
+          "apt-get -y install python-setuptools\n",
+          "wget -P /root https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz\n",
+          "mkdir -p /root/aws-cfn-bootstrap-latest\n",
+          "tar xvfz /root/aws-cfn-bootstrap-latest.tar.gz --strip-components=1 -C /root/aws-cfn-bootstrap-latest\n",
+          "easy_install /root/aws-cfn-bootstrap-latest/\n",
           "/usr/local/bin/cfn-init -s ", { "Ref" : "AWS::StackId" }, " -r WebServerInstance ",
           "         --region ", { "Ref" : "AWS::Region" }, "\n",
-
-          "echo thisissomeuserdataafterthewait > /tmp/userdataafter\n"
-
+          "ruby /home/ubuntu/s3get.rb chef-client-setup.rb validation.pem databag-key\n",
+          "touch /tmp/done_with_user_data\n"
         ]]}}        
       }
     }
