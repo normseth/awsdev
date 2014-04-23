@@ -45,6 +45,24 @@
       "Description": "The Chef runlist",
       "Type": "String",
       "Default": "recipe[linux-base]"
+    },
+
+    "DomainName": {
+      "Description": "The domain for the server",
+      "Type": "String",
+      "Default": "demo.level11.com"
+    },
+
+    "ChefEnvironment": {
+      "Description": "The Chef environment",
+      "Type": "String",
+      "Default": "_default"
+    },
+
+    "ChefOrganization": {
+      "Description": "The Chef organization",
+      "Type": "String",
+      "Default": "level11-demo"
     }
 
   },
@@ -316,8 +334,11 @@
           "easy_install /root/aws-cfn-bootstrap-latest/\n",
           "mkdir -p /etc/chef \n",
           "/usr/local/bin/cfn-init -s ", { "Ref" : "AWS::StackId" }, " -r WebServerInstance ",
-          "         --region ", { "Ref" : "AWS::Region" }, "\n",
+          "     --region ", { "Ref" : "AWS::Region" }, "\n",
           "ruby /home/ubuntu/s3get.rb chef-client-setup.rb validation.pem databag-key\n",
+          "ruby /etc/chef/chef-client-setup.rb ", {"Ref" : "DomainName"}, " ", { "Ref" : "ChefEnvironment"}, 
+          "     ", {"Ref" : "ChefOrganization"}, "\n",
+          "chef-client -j /etc/chef/first-boot.json",
           "touch /tmp/done_with_user_data\n"
         ]]}}        
       }
