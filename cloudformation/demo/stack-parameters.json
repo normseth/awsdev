@@ -1,0 +1,10 @@
+[
+  {
+    "ParameterKey": "KeyName",
+    "ParameterValue": "L11-devops"
+  }, 
+  {
+    "ParameterKey": "ProjectName",
+    "ParameterValue": "cfntest"
+  }
+]
