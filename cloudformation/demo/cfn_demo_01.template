@@ -326,6 +326,14 @@
         "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["", [
           "#!/bin/bash -ex\n",
           "touch /tmp/starting_user_data\n",
+
+          "# Helper function\n",
+          "function error_exit\n",
+          "{\n",
+          "  /opt/aws/bin/cfn-signal -e 1 -r \"$1\" '", { "Ref" : "WebServerWaitHandle" }, "'\n",
+          "  exit 1\n",
+          "}\n",
+
           "apt-get update -y\n",
           "apt-get -y install python-setuptools\n",
           "wget -P /root https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz\n",
@@ -334,15 +342,33 @@
           "easy_install /root/aws-cfn-bootstrap-latest/\n",
           "mkdir -p /etc/chef \n",
           "/usr/local/bin/cfn-init -s ", { "Ref" : "AWS::StackId" }, " -r WebServerInstance ",
-          "     --region ", { "Ref" : "AWS::Region" }, "\n",
+          "     --region ", { "Ref" : "AWS::Region" }, " || error_exit 'Failed to start cfn-hup'\n",
           "ruby /home/ubuntu/s3get.rb chef-client-setup.rb validation.pem databag-key\n",
           "ruby /etc/chef/chef-client-setup.rb ", {"Ref" : "DomainName"}, " ", { "Ref" : "ChefEnvironment"}, 
           "     ", {"Ref" : "ChefOrganization"}, "\n",
           "chef-client -j /etc/chef/first-boot.json \n",
+
+          "# All done, so signal happy\n",
+          "cfn-signal -e 0 -r \"WebServer setup complete\" '", { "Ref" : "WebServerWaitHandle" }, "'\n",
+
           "touch /tmp/done_with_user_data\n"
         ]]}}        
       }
+    },
+
+    "WebServerWaitHandle" : {
+      "Type" : "AWS::CloudFormation::WaitConditionHandle"
+    },
+
+    "WebServerWaitCondition" : {
+      "Type" : "AWS::CloudFormation::WaitCondition",
+      "DependsOn" : "WebServerInstance",
+      "Properties" : {
+        "Handle" : {"Ref" : "WebServerWaitHandle"},
+        "Timeout" : "1500"
+      }
     }
+
   },
 
   "Outputs" : {
