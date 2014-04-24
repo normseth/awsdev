@@ -1,0 +1,17 @@
+{
+  "builders": [
+  {
+    "type": "amazon-ebs",
+    "region": "us-west-2",
+    "source_ami": "ami-e030a5d0",
+    "instance_type": "m1.small",
+    "ssh_username": "ec2-user",
+    "ami_name": "Level11 CentOS 6.4 20140424a",
+    "ami_description": "CentOS 6.4 + cloud init.  Sourced from ami-e030a5d0 (bashton)",
+    "tags": {
+      "OS_Version": "CentOS",
+      "Release": "6.4"
+    }
+  }
+  ]    
+}
