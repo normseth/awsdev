@@ -344,7 +344,7 @@
           "# Bootstrap Chef \n",
           "mkdir -p /etc/chef \n",
           "/usr/local/bin/cfn-init -s ", { "Ref" : "AWS::StackId" }, " -r WebServerInstance ",
-          "     --region ", { "Ref" : "AWS::Region" }, " || error_exit 'Failed to start cfn-hup'\n",
+          "     --region ", { "Ref" : "AWS::Region" }, " || error_exit 'Failed to start cfn-init'\n",
           "ruby /home/ubuntu/s3get.rb chef-client-setup.rb validation.pem databag-key\n",
           "ruby /etc/chef/chef-client-setup.rb ", {"Ref" : "DomainName"}, " ", { "Ref" : "ChefEnvironment"}, 
           "     ", {"Ref" : "ChefOrganization"}, "\n",
