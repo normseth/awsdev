@@ -41,7 +41,7 @@
    "InstanceCount" : {
       "Description" : "Number of EC2 instances to launch",
       "Type" : "Number",
-      "Default" : "1"
+      "Default" : "2"
     },
 
     "WebServerPort" : {
@@ -80,6 +80,12 @@
       "Default": "level11-demo"
     },
 
+    "ASGQueueUser": {
+      "Description": "AWS user to receive events via SQS",
+      "Type": "String",
+      "Default": "ChefUser"
+    },
+
     "AZ": {
       "Description": "Availability zone into which to place servers",
       "Type": "String",
@@ -99,9 +105,67 @@
     "NotificationTopic": {
       "Type": "AWS::SNS::Topic",
       "Properties": {
-        "Subscription": [ {
-            "Endpoint": { "Ref": "OperatorEmail" },
-            "Protocol": "email-json" } ]
+        "Subscription": [ 
+          { "Endpoint" : { "Ref": "OperatorEmail" }, "Protocol": "email" }, 
+          { "Endpoint" : { "Fn::GetAtt" : ["ASGQueue", "Arn"]}, "Protocol" : "sqs" }
+        ]
+      }
+    },
+
+    "ASGQueue" : {
+      "Type" : "AWS::SQS::Queue"
+    },
+
+    "ASGQueueGroup" : {
+    "Type" : "AWS::IAM::Group",
+    "Properties" : {
+      "Policies": [ {
+          "PolicyName": "MyQueueGroupPolicy",
+          "PolicyDocument": { "Statement": [
+            {
+              "Effect":"Allow",
+              "Action":[
+                "sqs:DeleteMessage",
+                "sqs:ReceiveMessage"  
+              ],
+              "Resource":[
+                { "Fn::GetAtt" : ["ASGQueue", "Arn"]}
+              ]
+            }
+          ]}
+        }]
+      }
+    },
+
+    "AddUserToASGQueueGroup" : {
+      "Type" : "AWS::IAM::UserToGroupAddition",
+      "Properties" : {
+        "GroupName": {"Ref" : "ASGQueueGroup"},
+        "Users" : [{ "Ref" : "ASGQueueUser" }]
+      }
+    },
+
+    "ASGQueuePolicy" : {
+      "Type" : "AWS::SQS::QueuePolicy",
+      "Properties" : {
+        "PolicyDocument":  {
+          "Id":"MyQueuePolicy",
+          "Statement" : [
+            {
+              "Sid":"Allow-SendMessage-To-ASGQueue-From-NotificationTopic",
+        "Effect":"Allow",
+        "Principal" : {"AWS" : "*"},
+        "Action":["sqs:SendMessage"],
+        "Resource": "*",
+              "Condition": {
+                "ArnEquals": {
+                  "aws:SourceArn": { "Ref" : "NotificationTopic" }
+                }
+              }
+            }
+          ]
+        },
+        "Queues" : [ {"Ref" : "ASGQueue"} ]
       }
     },
 
