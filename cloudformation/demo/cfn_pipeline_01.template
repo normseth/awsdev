@@ -54,6 +54,7 @@
     "NotificationTopic": {
       "Type": "AWS::SNS::Topic",
       "Properties": {
+        "TopicName": "AutoScaleEvents",
         "Subscription": [ 
           { "Endpoint" : { "Ref": "OperatorEmail" }, "Protocol": "email" }, 
           { "Endpoint" : { "Fn::GetAtt" : ["ASGQueue", "Arn"]}, "Protocol" : "sqs" }
@@ -62,7 +63,10 @@
     },
 
     "ASGQueue" : {
-      "Type" : "AWS::SQS::Queue"
+      "Type" : "AWS::SQS::Queue",
+      "Properties" : {
+        "QueueName": "AutoScaleEventQueue"
+      }
     },
 
     "ASGQueueGroup" : {
