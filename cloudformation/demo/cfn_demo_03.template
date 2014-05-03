@@ -1,7 +1,7 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
 
-  "Description" : "Creates a VPC with a single subnet, and a load-balanced autoscale group of instances.",
+  "Description" : "Creates a VPC with a single subnet, and a load-balanced autoscale group of instances.  This stack depends on SNS and SQS resources created by the Pipeline stack.",
 
   "Parameters" : {
 
@@ -41,7 +41,7 @@
    "InstanceCount" : {
       "Description" : "Number of EC2 instances to launch",
       "Type" : "Number",
-      "Default" : "2"
+      "Default" : "1"
     },
 
     "WebServerPort" : {
@@ -80,6 +80,12 @@
       "Default": "ChefUser"
     },
 
+    "NotificationTopicARN": {
+      "Description": "ARN for existing SNS topic for autoscale event messages",
+      "Type": "String",
+      "Default": "arn:aws:sns:us-west-2:694140082679:AutoScaleEvents"
+    },    
+
     "AZ": {
       "Description": "Availability zone into which to place servers",
       "Type": "String",
@@ -95,73 +101,6 @@
   },
 
   "Resources" : {
-
-    "NotificationTopic": {
-      "Type": "AWS::SNS::Topic",
-      "Properties": {
-        "Subscription": [ 
-          { "Endpoint" : { "Ref": "OperatorEmail" }, "Protocol": "email" }, 
-          { "Endpoint" : { "Fn::GetAtt" : ["ASGQueue", "Arn"]}, "Protocol" : "sqs" }
-        ]
-      }
-    },
-
-    "ASGQueue" : {
-      "Type" : "AWS::SQS::Queue"
-    },
-
-    "ASGQueueGroup" : {
-    "Type" : "AWS::IAM::Group",
-    "Properties" : {
-      "Policies": [ {
-          "PolicyName": "MyQueueGroupPolicy",
-          "PolicyDocument": { "Statement": [
-            {
-              "Effect":"Allow",
-              "Action":[
-                "sqs:DeleteMessage",
-                "sqs:ReceiveMessage"  
-              ],
-              "Resource":[
-                { "Fn::GetAtt" : ["ASGQueue", "Arn"]}
-              ]
-            }
-          ]}
-        }]
-      }
-    },
-
-    "AddUserToASGQueueGroup" : {
-      "Type" : "AWS::IAM::UserToGroupAddition",
-      "Properties" : {
-        "GroupName": {"Ref" : "ASGQueueGroup"},
-        "Users" : [{ "Ref" : "ASGQueueUser" }]
-      }
-    },
-
-    "ASGQueuePolicy" : {
-      "Type" : "AWS::SQS::QueuePolicy",
-      "Properties" : {
-        "PolicyDocument":  {
-          "Id":"MyQueuePolicy",
-          "Statement" : [
-            {
-              "Sid":"Allow-SendMessage-To-ASGQueue-From-NotificationTopic",
-        "Effect":"Allow",
-        "Principal" : {"AWS" : "*"},
-        "Action":["sqs:SendMessage"],
-        "Resource": "*",
-              "Condition": {
-                "ArnEquals": {
-                  "aws:SourceArn": { "Ref" : "NotificationTopic" }
-                }
-              }
-            }
-          ]
-        },
-        "Queues" : [ {"Ref" : "ASGQueue"} ]
-      }
-    },
 
     "VPC" : {
       "Type" : "AWS::EC2::VPC",
@@ -347,9 +286,17 @@
           "Key" : "ChefRole",
           "Value" : { "Ref" : "ChefWebServerRole"},
           "PropagateAtLaunch" : "true"
+          }, {
+          "Key" : "ChefEnvironment",
+          "Value" : { "Ref" : "ChefEnvironment"},
+          "PropagateAtLaunch" : "true"
+          }, {
+          "Key" : "ChefOrganization",
+          "Value" : { "Ref" : "ChefOrganization"},
+          "PropagateAtLaunch" : "true"
         } ],
         "NotificationConfiguration": {
-          "TopicARN": { "Ref": "NotificationTopic"},
+          "TopicARN": { "Ref": "NotificationTopicARN"},
           "NotificationTypes": ["autoscaling:EC2_INSTANCE_LAUNCH", "autoscaling:EC2_INSTANCE_LAUNCH_ERROR", "autoscaling:EC2_INSTANCE_TERMINATE", "autoscaling:EC2_INSTANCE_TERMINATE_ERROR"]
         }
       }
@@ -367,10 +314,7 @@
           "#!/bin/bash -ex\n",
 
           "# Could as easily do this with Chef... \n",
-          "apt-get update -y\n",
-
-          "# All done, so signal happy\n",
-          "cfn-signal -e 0 -r \"WebServer setup complete\" '", { "Ref" : "LaunchConfigWaitHandle" }, "'\n"
+          "apt-get update -y\n"
 
         ]]}}        
       }
@@ -415,21 +359,7 @@
           "CidrIp" : "0.0.0.0/0"
         } ]
       }
-    },
-
-    "LaunchConfigWaitHandle" : {
-      "Type" : "AWS::CloudFormation::WaitConditionHandle"
-    },
-
-    "LaunchConfigCondition" : {
-      "Type" : "AWS::CloudFormation::WaitCondition",
-      "DependsOn" : "LaunchConfig",
-      "Properties" : {
-        "Handle" : {"Ref" : "LaunchConfigWaitHandle"},
-        "Timeout" : "1500"
-      }
     }
-
   },
 
   "Outputs" : {

@@ -1,7 +1,7 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
 
-  "Description" : "Creates an SQS queue and a VPC with a single subnet.",
+  "Description" : "Creates SNS/SQS infrastructure for event notifications, and a VPC with a single subnet.  Subsequent stacks are expected to provision CI pipeline servers into this subnet.",
 
   "Parameters" : {
 
