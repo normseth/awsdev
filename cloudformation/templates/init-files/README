@@ -1,0 +1,4 @@
+The files in this directory are used with the templates that use cfn-init as the bootstrapping mechanism for Chef.
+Also required are databag-key and validation.pem which, as key files, are not checked into GitHub.
+
+The templates that use asynchronous integration with Chef do not need these files.
